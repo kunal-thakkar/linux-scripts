@@ -1,8 +1,18 @@
 #https://www.digitalocean.com/community/tutorials/how-to-configure-a-mail-server-using-postfix-dovecot-mysql-and-spamassassin
 set -e
-yum install postfix dovecot dovecot-mysql -y
 read -p "Enter MySql root password " MySql_PWD
-cat > ./mail_server.sql <<EOF
+while 
+	echo "
+	1) Install Mail Server.
+	2) List domian.
+	3) Add domian.
+	4) Add email account.
+	0) Exit"
+    read -p "Enter your choice : " opt
+	
+	if (( $opt == 1 ));then
+		yum install postfix dovecot dovecot-mysql -y
+		cat > ./mail_server.sql <<EOF
 drop database servermail;
 create database servermail;
 USE servermail;
@@ -34,25 +44,25 @@ PRIMARY KEY (id),
 FOREIGN KEY (domain_id) REFERENCES virtual_domains(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 EOF
-mysql -uroot -p$MySql_PWD < mail_server.sql
-rm -rf ./mail_server.sql
+		mysql -uroot -p$MySql_PWD < mail_server.sql
+		rm -rf ./mail_server.sql
 
-#============Create certificates
-read -p "Want to use apache ssl cert (y) or create new (n) " RESP
-mkdir -p /etc/ssl/private
-mkdir -p /etc/ss/certs
-if [ "$RESP" = "y" ]; then
- cp /etc/pki/tls/private/localhost.key /etc/ssl/private/mail.key
- cp /etc/pki/tls/certs/localhost.crt /etc/ssl/certs/mailcert.pem
-else
- sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/mail.key -out /etc/ssl/certs/mailcert.pem
-fi
+		#============Create certificates
+		read -p "Want to use apache ssl cert (y) or create new (n) " RESP
+		mkdir -p /etc/ssl/private
+		mkdir -p /etc/ss/certs
+		if [ "$RESP" = "y" ]; then
+		 cp /etc/pki/tls/private/localhost.key /etc/ssl/private/mail.key
+		 cp /etc/pki/tls/certs/localhost.crt /etc/ssl/certs/mailcert.pem
+		else
+		 sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/mail.key -out /etc/ssl/certs/mailcert.pem
+		fi
 
-#============Configure Postfix============
-HOSTNAME=$(hostname -f)
+		#============Configure Postfix============
+		HOSTNAME=$(hostname -f)
 
-cp /etc/postfix/main.cf /etc/postfix/main.cf.orig
-cat > /etc/postfix/main.cf <<EOF
+		cp /etc/postfix/main.cf /etc/postfix/main.cf.orig
+		cat > /etc/postfix/main.cf <<EOF
 # Debian specific:  Specifying a file name will cause the first
 # line of that file to be used as the name.  The Debian default
 # is /etc/mailname.
@@ -104,12 +114,12 @@ virtual_mailbox_maps = mysql:/etc/postfix/mysql-virtual-mailbox-maps.cf
 virtual_alias_maps = mysql:/etc/postfix/mysql-virtual-alias-maps.cf
 EOF
 
-sed -i '/smtpd_tls_security_level/s/^#//g' /etc/postfix/master.cf
-sed -i '/smtpd_sasl_auth_enable/s/^#//g' /etc/postfix/master.cf
-sed -i '/smtpd_client_restrictions/s/^#//g' /etc/postfix/master.cf
-sed -i '/submission/s/^#//g' /etc/postfix/master.cf
+		sed -i '/smtpd_tls_security_level/s/^#//g' /etc/postfix/master.cf
+		sed -i '/smtpd_sasl_auth_enable/s/^#//g' /etc/postfix/master.cf
+		sed -i '/smtpd_client_restrictions/s/^#//g' /etc/postfix/master.cf
+		sed -i '/submission/s/^#//g' /etc/postfix/master.cf
 
-cat > /etc/postfix/mysql-virtual-mailbox-domains.cf <<EOF
+		cat > /etc/postfix/mysql-virtual-mailbox-domains.cf <<EOF
 user = root
 password = $MySql_PWD
 hosts = 127.0.0.1
@@ -117,7 +127,7 @@ dbname = servermail
 query = SELECT 1 FROM virtual_domains WHERE name='%s'
 EOF
 
-cat > /etc/postfix/mysql-virtual-mailbox-maps.cf <<EOF
+		cat > /etc/postfix/mysql-virtual-mailbox-maps.cf <<EOF
 user = root
 password = $MySql_PWD
 hosts = 127.0.0.1
@@ -125,7 +135,7 @@ dbname = servermail
 query = SELECT 1 FROM virtual_users WHERE email='%s'
 EOF
 
-cat > /etc/postfix/mysql-virtual-alias-maps.cf <<EOF
+		cat > /etc/postfix/mysql-virtual-alias-maps.cf <<EOF
 user = root
 password = $MySql_PWD
 hosts = 127.0.0.1
@@ -133,43 +143,43 @@ dbname = servermail
 query = SELECT destination FROM virtual_aliases WHERE source='%s'
 EOF
 
-service sendmail stop
-service postfix start
+		service sendmail stop
+		service postfix start
 
-rm -rf /var/mail
-mkdir /var/mail
-groupadd -g 5000 vmail
-useradd -g vmail -u 5000 --disabled-password vmail -d /home/vmail -m
-chown -R vmail:vmail /var/mail
-chmod 2775 /var/mail
+		rm -rf /var/mail
+		mkdir /var/mail
+		groupadd -g 5000 vmail
+		useradd -g vmail -u 5000 --disabled-password vmail -d /home/vmail -m
+		chown -R vmail:vmail /var/mail
+		chmod 2775 /var/mail
 
-#===========Configure dovecot================
-cp /etc/dovecot/dovecot.conf /etc/dovecot/dovecot.conf.orig
-cp /etc/dovecot/conf.d/10-mail.conf /etc/dovecot/conf.d/10-mail.conf.orig
-cp /etc/dovecot/conf.d/10-auth.conf /etc/dovecot/conf.d/10-auth.conf.orig
-cp /etc/dovecot/conf.d/10-master.conf /etc/dovecot/conf.d/10-master.conf.orig
-cp /etc/dovecot/conf.d/10-ssl.conf /etc/dovecot/conf.d/10-ssl.conf.orig
-cp /etc/dovecot/conf.d/auth-sql.conf.ext /etc/dovecot/conf.d/auth-sql.conf.ext.orig
+		#===========Configure dovecot================
+		cp /etc/dovecot/dovecot.conf /etc/dovecot/dovecot.conf.orig
+		cp /etc/dovecot/conf.d/10-mail.conf /etc/dovecot/conf.d/10-mail.conf.orig
+		cp /etc/dovecot/conf.d/10-auth.conf /etc/dovecot/conf.d/10-auth.conf.orig
+		cp /etc/dovecot/conf.d/10-master.conf /etc/dovecot/conf.d/10-master.conf.orig
+		cp /etc/dovecot/conf.d/10-ssl.conf /etc/dovecot/conf.d/10-ssl.conf.orig
+		cp /etc/dovecot/conf.d/auth-sql.conf.ext /etc/dovecot/conf.d/auth-sql.conf.ext.orig
 
-#=============Edit /etc/dovecot/dovecot.conf==========================
-sed -i '/!include conf.d\/\*.conf/s/^#//g' /etc/dovecot/dovecot.conf
-sed -i '/protocols =/s/^#//g' /etc/dovecot/dovecot.conf
-sed -i -e "\$a\!include_try \/usr\/share\/dovecot\/protocols.d\/\*.protocol" /etc/dovecot/dovecot.conf
+		#=============Edit /etc/dovecot/dovecot.conf==========================
+		sed -i '/!include conf.d\/\*.conf/s/^#//g' /etc/dovecot/dovecot.conf
+		sed -i '/protocols =/s/^#//g' /etc/dovecot/dovecot.conf
+		sed -i -e "\$a\!include_try \/usr\/share\/dovecot\/protocols.d\/\*.protocol" /etc/dovecot/dovecot.conf
 
-#=============Edit /etc/dovecot/conf.d/10-mail.conf===================
-sed -i '/^#mail_location =/s/^#//g' /etc/dovecot/conf.d/10-mail.conf
-sed -i 's/^mail_location =.*/mail_location = maildir:\/var\/mail\/vhosts\/%d\/%n/' /etc/dovecot/conf.d/10-mail.conf
-sed -i '/^#mail_privileged_group =/s/^#//g' /etc/dovecot/conf.d/10-mail.conf
-sed -i 's/^mail_privileged_group =.*/mail_privileged_group = mail/' /etc/dovecot/conf.d/10-mail.conf
+		#=============Edit /etc/dovecot/conf.d/10-mail.conf===================
+		sed -i '/^#mail_location =/s/^#//g' /etc/dovecot/conf.d/10-mail.conf
+		sed -i 's/^mail_location =.*/mail_location = maildir:\/var\/mail\/vhosts\/%d\/%n/' /etc/dovecot/conf.d/10-mail.conf
+		sed -i '/^#mail_privileged_group =/s/^#//g' /etc/dovecot/conf.d/10-mail.conf
+		sed -i 's/^mail_privileged_group =.*/mail_privileged_group = mail/' /etc/dovecot/conf.d/10-mail.conf
 
-#=============Edit /etc/dovecot/conf.d/10-auth.conf===================
-sed -i '/disable_plaintext_auth =/s/^#//g' /etc/dovecot/conf.d/10-auth.conf
-sed -i 's/^auth_mechanisms =.*/auth_mechanisms = plain login/' /etc/dovecot/conf.d/10-auth.conf
-sed -i '/^\!include auth-system.conf.ext/s/^/#/g' /etc/dovecot/conf.d/10-auth.conf
-sed -i '/\!include auth-sql.conf.ext/s/^#//g' /etc/dovecot/conf.d/10-auth.conf
+		#=============Edit /etc/dovecot/conf.d/10-auth.conf===================
+		sed -i '/disable_plaintext_auth =/s/^#//g' /etc/dovecot/conf.d/10-auth.conf
+		sed -i 's/^auth_mechanisms =.*/auth_mechanisms = plain login/' /etc/dovecot/conf.d/10-auth.conf
+		sed -i '/^\!include auth-system.conf.ext/s/^/#/g' /etc/dovecot/conf.d/10-auth.conf
+		sed -i '/\!include auth-sql.conf.ext/s/^#//g' /etc/dovecot/conf.d/10-auth.conf
 
-#=============Create /etc/dovecot/dovecot-sql.conf.ext================
-cat > /etc/dovecot/dovecot-sql.conf.ext <<EOF
+		#=============Create /etc/dovecot/dovecot-sql.conf.ext================
+		cat > /etc/dovecot/dovecot-sql.conf.ext <<EOF
 # This file is opened as root, so it should be owned by root and mode 0600.
 #
 # http://wiki2.dovecot.org/AuthDatabase/SQL
@@ -302,9 +312,9 @@ password_query = SELECT email as user, password FROM virtual_users WHERE email='
 #iterate_query = SELECT username AS user FROM users
 EOF
 
-#=============Create /etc/dovecot/conf.d/10-master.conf================
-mv /etc/dovecot/conf.d/10-master.conf /etc/dovecot/conf.d/10-master.conf.orig
-cat > /etc/dovecot/conf.d/10-master.conf <<EOF
+		#=============Create /etc/dovecot/conf.d/10-master.conf================
+		mv /etc/dovecot/conf.d/10-master.conf /etc/dovecot/conf.d/10-master.conf.orig
+		cat > /etc/dovecot/conf.d/10-master.conf <<EOF
 #default_process_limit = 100
 #default_client_limit = 1000
 
@@ -323,11 +333,11 @@ cat > /etc/dovecot/conf.d/10-master.conf <<EOF
 
 service imap-login {
   inet_listener imap {
-    port = 0
+	port = 0
   }
   inet_listener imaps {
-    #port = 993
-    #ssl = yes
+	#port = 993
+	#ssl = yes
   }
 
   # Number of connections to handle before starting a new process. Typically
@@ -343,11 +353,11 @@ service imap-login {
 }
 service pop3-login {
   inet_listener pop3 {
-    #port = 110
+	#port = 110
   }
   inet_listener pop3s {
-    #port = 995
-    #ssl = yes
+	#port = 995
+	#ssl = yes
   }
 }
 
@@ -359,9 +369,9 @@ service lmtp {
   }
   # Create inet listener only if you can't use the above UNIX socket
   #inet_listener lmtp {
-    # Avoid making LMTP visible for the entire internet
-    #address =
-    #port = 
+	# Avoid making LMTP visible for the entire internet
+	#address =
+	#port = 
   #}
 }
 
@@ -386,9 +396,9 @@ service auth {
   # permissions. Users that have access to this socket are able to get a list
   # of all usernames and get results of everyone's userdb lookups.
   unix_listener /var/spool/postfix/private/auth {
-    mode = 0666
-    user = postfix
-    group = postfix
+	mode = 0666
+	user = postfix
+	group = postfix
   }
 
   unix_listener auth-userdb {
@@ -417,28 +427,28 @@ service dict {
   # If dict proxy is used, mail processes should have access to its socket.
   # For example: mode=0660, group=vmail and global mail_access_groups=vmail
   unix_listener dict {
-    #mode = 0600
-    #user =
-    #group =
+	#mode = 0600
+	#user =
+	#group =
   }
 }
 EOF
 
-#=============Edit /etc/dovecot/conf.d/10-logging.conf================
-sed -i '/log_path =/s/^#//g' /etc/dovecot/conf.d/10-logging.conf
-sed -i 's/^log_path =.*/log_path = \/var\/log\/dovecot.log/'  /etc/dovecot/conf.d/10-logging.conf
+		#=============Edit /etc/dovecot/conf.d/10-logging.conf================
+		sed -i '/log_path =/s/^#//g' /etc/dovecot/conf.d/10-logging.conf
+		sed -i 's/^log_path =.*/log_path = \/var\/log\/dovecot.log/'  /etc/dovecot/conf.d/10-logging.conf
 
-chown -R vmail:dovecot /etc/dovecot
-chmod -R o-rwx /etc/dovecot
+		chown -R vmail:dovecot /etc/dovecot
+		chmod -R o-rwx /etc/dovecot
 
-#=============Edit /etc/dovecot/conf.d/10-ssl.conf
-sed -i '/ssl = /s/^#//g' /etc/dovecot/conf.d/10-ssl.conf
-sed -i '/ssl_cert =/s/^#//g' /etc/dovecot/conf.d/10-ssl.conf
-sed -i '/ssl_key =/s/^#//g' /etc/dovecot/conf.d/10-ssl.conf
-sed -i 's/^ssl_cert = .*/ssl_cert = <\/etc\/ssl\/certs\/mailcert.pem/' /etc/dovecot/conf.d/10-ssl.conf
-sed -i 's/^ssl_key = .*/ssl_key = <\/etc\/ssl\/private\/mail.key/' /etc/dovecot/conf.d/10-ssl.conf
+		#=============Edit /etc/dovecot/conf.d/10-ssl.conf
+		sed -i '/ssl = /s/^#//g' /etc/dovecot/conf.d/10-ssl.conf
+		sed -i '/ssl_cert =/s/^#//g' /etc/dovecot/conf.d/10-ssl.conf
+		sed -i '/ssl_key =/s/^#//g' /etc/dovecot/conf.d/10-ssl.conf
+		sed -i 's/^ssl_cert = .*/ssl_cert = <\/etc\/ssl\/certs\/mailcert.pem/' /etc/dovecot/conf.d/10-ssl.conf
+		sed -i 's/^ssl_key = .*/ssl_key = <\/etc\/ssl\/private\/mail.key/' /etc/dovecot/conf.d/10-ssl.conf
 
-cat > /etc/dovecot/conf.d/auth-sql.conf.ext <<EOF
+		cat > /etc/dovecot/conf.d/auth-sql.conf.ext <<EOF
 passdb {
   driver = sql
   args = /etc/dovecot/dovecot-sql.conf.ext
@@ -449,29 +459,43 @@ userdb {
 }
 EOF
 
-service dovecot restart
+		service dovecot restart
 
-#=============Install roundcubemail===================================
-	sudo yum install php-pear -y
-	sudo yum install --disablerepo='amzn-*' php-pear-Auth-SASL -y
-	sudo yum install roundcubemail -y
-	
-	mysql -uroot -p$MySql_PWD -e "CREATE DATABASE RoundCube_db;"
-	mysql -uroot -p$MySql_PWD RoundCube_db < /usr/share/roundcubemail/SQL/mysql.initial.sql
-	cp -p /etc/roundcubemail/defaults.inc.php /etc/roundcubemail/config.inc.php
-	sed -i "s/^\$config\['db_dsnw'\] =.*/\$config\['db_dsnw'\] = 'mysql:\/\/root:root@127.0.0.1\/RoundCube_db';/" /etc/roundcubemail/config.inc.php
-	sed -i "s/^\$config\['default_host'\] =.*/\$config\['default_host'\] = 'ssl:\/\/127.0.0.1:993';/" /etc/roundcubemail/config.inc.php
-	sed -i "s/^\$config\['default_port'\] =.*/\$config\['default_port'\] = 993;/" /etc/roundcubemail/config.inc.php
-	sed -i "s/^\$config\['imap_auth_type'\] =.*/\$config\['imap_auth_type'\] = LOGIN;/" /etc/roundcubemail/config.inc.php
-	sed -i "s/^\$config\['imap_conn_options'\] =.*/\$config\['imap_conn_options'\] = array('ssl'=>array('verify_peer'=>false, 'verify_peer_name'=>false));/" /etc/roundcubemail/config.inc.php
-	sed -i "s/^\$config\['smtp_server'\] =.*/\$config\['smtp_server'\] = 'tls:\/\/127.0.0.1:587';/" /etc/roundcubemail/config.inc.php
-	sed -i "s/^\$config\['smtp_port'\] =.*/\$config\['smtp_port'\] = 587;/" /etc/roundcubemail/config.inc.php
-	sed -i "s/^\$config\['smtp_user'\] =.*/\$config\['smtp_user'\] = '%u';/" /etc/roundcubemail/config.inc.php
-	sed -i "s/^\$config\['smtp_pass'\] =.*/\$config\['smtp_pass'\] = '%p';/" /etc/roundcubemail/config.inc.php
-	sed -i "s/^\$config\['smtp_auth_type'\] =.*/\$config\['smtp_auth_type'\] = LOGIN;/" /etc/roundcubemail/config.inc.php
-	sed -i "s/^\$config\['smtp_conn_options'\] =.*/\$config\['smtp_conn_options'\] = array('ssl'=>array('verify_peer'=>false, 'verify_peer_name'=>false));/" /etc/roundcubemail/config.inc.php
-	sed -i "s/^\$config\['force_https'\] =.*/\$config\['force_https'\] = true;/" /etc/roundcubemail/config.inc.php
+		#=============Install roundcubemail===================================
+		sudo yum install php-pear -y
+		sudo yum install --disablerepo='amzn-*' php-pear-Auth-SASL -y
+		sudo yum install roundcubemail -y
+		
+		mysql -uroot -p$MySql_PWD -e "CREATE DATABASE RoundCube_db;"
+		mysql -uroot -p$MySql_PWD RoundCube_db < /usr/share/roundcubemail/SQL/mysql.initial.sql
+		cp -p /etc/roundcubemail/defaults.inc.php /etc/roundcubemail/config.inc.php
+		sed -i "s/^\$config\['db_dsnw'\] =.*/\$config\['db_dsnw'\] = 'mysql:\/\/root:root@127.0.0.1\/RoundCube_db';/" /etc/roundcubemail/config.inc.php
+		sed -i "s/^\$config\['default_host'\] =.*/\$config\['default_host'\] = 'ssl:\/\/127.0.0.1:993';/" /etc/roundcubemail/config.inc.php
+		sed -i "s/^\$config\['default_port'\] =.*/\$config\['default_port'\] = 993;/" /etc/roundcubemail/config.inc.php
+		sed -i "s/^\$config\['imap_auth_type'\] =.*/\$config\['imap_auth_type'\] = LOGIN;/" /etc/roundcubemail/config.inc.php
+		sed -i "s/^\$config\['imap_conn_options'\] =.*/\$config\['imap_conn_options'\] = array('ssl'=>array('verify_peer'=>false, 'verify_peer_name'=>false));/" /etc/roundcubemail/config.inc.php
+		sed -i "s/^\$config\['smtp_server'\] =.*/\$config\['smtp_server'\] = 'tls:\/\/127.0.0.1:587';/" /etc/roundcubemail/config.inc.php
+		sed -i "s/^\$config\['smtp_port'\] =.*/\$config\['smtp_port'\] = 587;/" /etc/roundcubemail/config.inc.php
+		sed -i "s/^\$config\['smtp_user'\] =.*/\$config\['smtp_user'\] = '%u';/" /etc/roundcubemail/config.inc.php
+		sed -i "s/^\$config\['smtp_pass'\] =.*/\$config\['smtp_pass'\] = '%p';/" /etc/roundcubemail/config.inc.php
+		sed -i "s/^\$config\['smtp_auth_type'\] =.*/\$config\['smtp_auth_type'\] = LOGIN;/" /etc/roundcubemail/config.inc.php
+		sed -i "s/^\$config\['smtp_conn_options'\] =.*/\$config\['smtp_conn_options'\] = array('ssl'=>array('verify_peer'=>false, 'verify_peer_name'=>false));/" /etc/roundcubemail/config.inc.php
+		sed -i "s/^\$config\['force_https'\] =.*/\$config\['force_https'\] = true;/" /etc/roundcubemail/config.inc.php
 
-	sed -i '0,/Require local/s/Require local/Require all granted\nRewriteEngine On\nRewriteCond %{HTTPS} off\nRewriteRule (.*) https:\/\/%{HTTP_HOST}%{REQUEST_URI}/' /etc/httpd/conf.d/roundcubemail.conf
-	
-	service httpd restart
+		sed -i '0,/Require local/s/Require local/Require all granted\nRewriteEngine On\nRewriteCond %{HTTPS} off\nRewriteRule (.*) https:\/\/%{HTTP_HOST}%{REQUEST_URI}/' /etc/httpd/conf.d/roundcubemail.conf
+		
+		service httpd restart
+	elif (( $opt == 2 )); then
+		mysql -uroot -p$MySql_PWD servermail -e "Select id, name as domain from virtual_domains;"
+	elif (( $opt == 3 )); then
+		read -p "Enter domain you want to add : " DOMAIN
+		mysql -uroot -p$MySql_PWD servermail -e "INSERT INTO virtual_domains(name) VALUES ('$DOMAIN');"
+	elif (( $opt == 4 )); then
+		mysql -uroot -p$MySql_PWD servermail -e "Select id, name as domain from virtual_domains;"
+		read -p "Enter domain id for which you want to add email : " DOMAIN_ID
+		read -p "Enter email id with domain : " EMAIL_ID
+		read -s -p "Enter password : " PASSWORD
+		mysql -uroot -p$MySql_PWD servermail -e "INSERT INTO virtual_users (domain_id, password, email) VALUES ('$DOMAIN_ID', ENCRYPT('$PASSWORD', CONCAT('/$6/$', SUBSTRING(SHA(RAND()), -16))), '$EMAIL_ID');"
+	fi
+	(( $opt > 0 ))
+do :; done
