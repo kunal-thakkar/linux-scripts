@@ -13,7 +13,7 @@ while
 	if (( $opt == 1 ));then
 		yum install postfix dovecot dovecot-mysql -y
 		cat > ./mail_server.sql <<EOF
-drop database servermail;
+drop database IF EXISTS servermail;
 create database servermail;
 USE servermail;
 /* We are going to create a table for the specific domains recognized as authorized domains. */
@@ -149,7 +149,8 @@ EOF
 		rm -rf /var/mail
 		mkdir /var/mail
 		groupadd -g 5000 vmail
-		useradd -g vmail -u 5000 --disabled-password vmail -d /home/vmail -m
+		useradd -g vmail -u 5000 -M -r vmail
+		#useradd -g vmail -u 5000 --disabled-password vmail -d /home/vmail -m
 		chown -R vmail:vmail /var/mail
 		chmod 2775 /var/mail
 
