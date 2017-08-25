@@ -4,6 +4,11 @@ GITWEB_PATH=/usr/share/git
 APACHE_PWD_PATH=/opt/git
 APACHE_PWD_FILE=.htpasswd
 set -e
+echo "
+Notes:
+	1)	To clone only files and not .git use command 
+		git archive <branch | master> --remote=<remote address> | tar -x -C <path to keep files>
+"
 while 
 	echo "
 	1) Install Git.
