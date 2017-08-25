@@ -4,8 +4,8 @@ read -p "Enter MySql root password " MySql_PWD
 while 
 	echo "
 	1) Install Mail Server.
-	2) List domian.
-	3) Add domian.
+	2) List domain.
+	3) Add domain.
 	4) Add email account.
 	0) Exit"
     read -p "Enter your choice : " opt
