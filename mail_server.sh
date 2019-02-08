@@ -470,7 +470,7 @@ EOF
 		mysql -uroot -p$MySql_PWD -e "CREATE DATABASE RoundCube_db;"
 		mysql -uroot -p$MySql_PWD RoundCube_db < /usr/share/roundcubemail/SQL/mysql.initial.sql
 		cp -p /etc/roundcubemail/defaults.inc.php /etc/roundcubemail/config.inc.php
-		sed -i "s/^\$config\['db_dsnw'\] =.*/\$config\['db_dsnw'\] = 'mysql:\/\/root:root@127.0.0.1\/RoundCube_db';/" /etc/roundcubemail/config.inc.php
+		sed -i "s/^\$config\['db_dsnw'\] =.*/\$config\['db_dsnw'\] = 'mysql:\/\/root:$MySql_PWD@127.0.0.1\/RoundCube_db';/" /etc/roundcubemail/config.inc.php
 		sed -i "s/^\$config\['default_host'\] =.*/\$config\['default_host'\] = 'ssl:\/\/127.0.0.1:993';/" /etc/roundcubemail/config.inc.php
 		sed -i "s/^\$config\['default_port'\] =.*/\$config\['default_port'\] = 993;/" /etc/roundcubemail/config.inc.php
 		sed -i "s/^\$config\['imap_auth_type'\] =.*/\$config\['imap_auth_type'\] = LOGIN;/" /etc/roundcubemail/config.inc.php
