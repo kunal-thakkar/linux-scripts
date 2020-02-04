@@ -1,4 +1,14 @@
 sudo apt-get update -y
+## for performance
+cat > /home/osmc/.kodi/userdata/advancedsettings.xml <<EOF
+<advancedsettings version="1.0">
+	<gui>
+		<algorithmdirtyregions>1</algorithmdirtyregions>
+		<nofliptimeout>0</nofliptimeout>
+	</gui>
+</advancedsettings>
+EOF
+
 ## install vnc server
 ## step 1 install all the necessary packages first in order to compile the vnc server.
 sudo apt-get install build-essential rbp-userland-dev-osmc libvncserver-dev libconfig++-dev unzip -y
@@ -86,6 +96,8 @@ echo "Complete."
 echo " "
 echo "Getting Amazon Reporitory..."
 wget https://github.com/Sandmann79/xbmc/releases/download/v1.0.2/repository.sandmann79.plugins-1.0.2.zip
+wget https://raw.githubusercontent.com/mani-coder/plugin.video.youngkbell.hotstar/master/plugin.video.youngkbell.hotstar-v5.0.0.zip
+
 echo " "
 echo "Complete."
 echo " "
