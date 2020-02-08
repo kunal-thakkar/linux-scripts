@@ -8,6 +8,41 @@ cat > /home/osmc/.kodi/userdata/advancedsettings.xml <<EOF
 	</gui>
 </advancedsettings>
 EOF
+echo "Add autoexec.py to download latest iptv list from https://mxplayer.in"
+cat > /home/osmc/.kodi/userdata/autoexec.py <<EOF
+import os, xbmc
+import urllib2
+import re, json
+
+content = urllib2.urlopen("https://www.mxplayer.in/browse/live-tv").read()
+#f = open("live-tv.html", "r")
+#content = f.read()
+obj = json.loads(re.match(r'^.*window.state = (.*)', content).groups()[0])
+data = {}
+for channel in obj["live"]["channels"]:
+	toAdd = False
+	for lang in channel["languages"]:
+		if lang["id"] in ["en", "hi", "mr", "gu"]:
+			toAdd = True
+	if toAdd:
+		if channel["category"] not in data:
+			data[channel["category"]] = []
+		data.get(channel["category"], []).append({
+			"title":channel["title"], 
+			"stream":channel["stream"]["mxplay"]["hls"]
+		})
+
+p = xbmc.translatePath(os.path.join('special://home', 'index.m3u8'))
+f = open(p, "w+")
+for cat in data:
+	for channel in data[cat]:
+		f.write("#EXTINF:0,{}\n{}\n".format(channel["title"], channel["stream"]["main"]))
+f.close()
+EOF
+## download panasonic remote
+echo "Downloading philips and panasonic remote conf from server you need to set up on pin 18"
+sudo curl 'https://git.krishnaconsultancy.co.in/?p=embedded/IR/lirc_remotes_code;a=blob_plain;f=remotes/panasonic/N2QAYB000976.conf' -H 'Connection: keep-alive' -H 'Pragma: no-cache' -H 'Cache-Control: no-cache' -H 'Authorization: Basic Z2l0OnJlcG9AMTIzNA==' -H 'Upgrade-Insecure-Requests: 1' -H 'User-Agent: Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36' -H 'Sec-Fetch-Mode: navigate' -H 'Sec-Fetch-User: ?1' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3' -H 'Sec-Fetch-Site: none' -H 'Accept-Encoding: gzip, deflate, br' -H 'Accept-Language: en-IN,en-GB;q=0.9,en-US;q=0.8,en;q=0.7,hi;q=0.6,mr;q=0.5,gu;q=0.4' --compressed > /etc/lirc/panasonic.conf
+sudo curl 'https://git.krishnaconsultancy.co.in/?p=embedded/IR/lirc_remotes_code;a=blob_plain;f=remotes/philips/26PFL5604H.lircd.conf' -H 'Connection: keep-alive' -H 'Pragma: no-cache' -H 'Cache-Control: no-cache' -H 'Authorization: Basic Z2l0OnJlcG9AMTIzNA==' -H 'Upgrade-Insecure-Requests: 1' -H 'User-Agent: Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36' -H 'Sec-Fetch-Mode: navigate' -H 'Sec-Fetch-User: ?1' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3' -H 'Sec-Fetch-Site: none' -H 'Accept-Encoding: gzip, deflate, br' -H 'Accept-Language: en-IN,en-GB;q=0.9,en-US;q=0.8,en;q=0.7,hi;q=0.6,mr;q=0.5,gu;q=0.4' --compressed > /etc/lirc/philips.conf
 
 ## install vnc server
 ## step 1 install all the necessary packages first in order to compile the vnc server.
@@ -67,26 +102,9 @@ sudo systemctl daemon-reload
 ## sudo systemctl daemon-reload
 
 ## install git
-sudo apt-get install git -y
-
-## download panasonic remote
-sudo curl 'https://git.krishnaconsultancy.co.in/?p=embedded/IR/lirc_remotes_code;a=blob_plain;f=remotes/panasonic/N2QAYB000976.conf' -H 'Connection: keep-alive' -H 'Pragma: no-cache' -H 'Cache-Control: no-cache' -H 'Authorization: Basic Z2l0OnJlcG9AMTIzNA==' -H 'Upgrade-Insecure-Requests: 1' -H 'User-Agent: Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36' -H 'Sec-Fetch-Mode: navigate' -H 'Sec-Fetch-User: ?1' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3' -H 'Sec-Fetch-Site: none' -H 'Accept-Encoding: gzip, deflate, br' -H 'Accept-Language: en-IN,en-GB;q=0.9,en-US;q=0.8,en;q=0.7,hi;q=0.6,mr;q=0.5,gu;q=0.4' --compressed > /etc/lirc/panasonic.conf
-sudo curl 'https://git.krishnaconsultancy.co.in/?p=embedded/IR/lirc_remotes_code;a=blob_plain;f=remotes/philips/26PFL5604H.lircd.conf' -H 'Connection: keep-alive' -H 'Pragma: no-cache' -H 'Cache-Control: no-cache' -H 'Authorization: Basic Z2l0OnJlcG9AMTIzNA==' -H 'Upgrade-Insecure-Requests: 1' -H 'User-Agent: Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36' -H 'Sec-Fetch-Mode: navigate' -H 'Sec-Fetch-User: ?1' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3' -H 'Sec-Fetch-Site: none' -H 'Accept-Encoding: gzip, deflate, br' -H 'Accept-Language: en-IN,en-GB;q=0.9,en-US;q=0.8,en;q=0.7,hi;q=0.6,mr;q=0.5,gu;q=0.4' --compressed > /etc/lirc/philips.conf
-
+#sudo apt-get install git -y
 
 echo "Installing amazon repository"
-echo "Starting setup, this will only work on Kodi V18 or greater..."
-echo " "
-echo "Installing dependencies..."
-apt-get install python-pip python-crypto build-essential -y
-apt-get install python-all-dev python-setuptools python-wheel -y
-apt-get install python-crypto-dbg python-crypto-doc python-pip-whl -y
-echo "Complete."
-echo " "
-echo "Setting up Pycryptodome..."
-pip install pycryptodomex
-ln -s /usr/lib/python2.7/dist-packages/Crypto /usr/lib/python2.7/dist-packages/Cryptodome
-echo "Complete."
 echo " "
 echo "Getting Netflix Repository..."
 mkdir ~/addons
@@ -97,19 +115,6 @@ echo " "
 echo "Getting Amazon Reporitory..."
 wget https://github.com/Sandmann79/xbmc/releases/download/v1.0.2/repository.sandmann79.plugins-1.0.2.zip
 wget https://raw.githubusercontent.com/mani-coder/plugin.video.youngkbell.hotstar/master/plugin.video.youngkbell.hotstar-v5.0.0.zip
-
 echo " "
 echo "Complete."
 echo " "
-echo "Reboot in"
-echo "5"
-sleep 1
-echo "4"
-sleep 1
-echo "3"
-sleep 1
-echo "2"
-sleep 1
-echo "1"
-sleep 1
-sudo reboot
