@@ -49,7 +49,7 @@ For Each strTable In arrTables
         Do While Not objRS.EOF
             strResult = ""
             For i = 0 To objRS.Fields.Count - 1
-                strResult = strResult & ",""" & sqlSafe(objRS.Fields.Item(i).Value, arrColumns(i)) & """"
+                strResult = strResult & "," & sqlSafe(objRS.Fields.Item(i).Value, arrColumns(i))
             Next
             ' Add the current record to the output string
             objFile.Write "INSERT INTO " & strTable & " VALUES (" & Mid( strResult, 2 ) & ");" & Chr(10)
@@ -70,16 +70,20 @@ Set objFile   = Nothing
 
 Function sqlSafe(val, t)
     If IsNull(val) Then
-        sqlSafe = ""
+        If t = "Date" then
+            sqlSafe = "NULL"
+        Else 
+            sqlSafe = """"""
+        End If
     Else
         If t = "Date" Then
             Dim p : p = Split(val, "/")
-            sqlSafe = p(2) & "-" & p(0) & "-" & p(1)
+            sqlSafe = """" & p(2) & "-" & p(0) & "-" & p(1) & """"
         Else
             val = Replace(val, Chr(10), "")
             val = Replace(val, Chr(13), "")
             val = Replace(val, "'", "\'")
-            sqlSafe = Replace(val, """", "\""")
+            sqlSafe = """" & Replace(val, """", "\""") & """"
         End If
     End If
 End Function
